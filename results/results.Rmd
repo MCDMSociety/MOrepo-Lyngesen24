@@ -83,6 +83,20 @@ dat %>%
   summarise(mean_card = mean(card), n = n()) 
 ```
 
+```{r}
+dat %>% 
+  ggplot(aes(x = spAveCard, y = card, color = method)) +
+  geom_point() + 
+  stat_summary(fun="mean", geom="line") +
+  facet_grid(p ~ m, scales = "free", labeller =  "label_both")  + 
+  labs(title = "Number of nondominated points given subproblem cardinality",
+       y = "Cardinality Yn",
+       x = "Subproblem cardinality",
+       color = "Methods used to generate subproblems") +
+  theme(legend.position = "bottom") 
+```
+
+
 We use plots to check for effects of $p$, $m$ and subset size:
 
 ```{r}
@@ -548,4 +562,61 @@ dat |>
 
 ```{r, out.width = "100%"}
 DT::datatable(dat, width = "100%", options = list(autoWidth = T, scrollX = TRUE, columnDefs = list(list(width = '250px', targets = c(1)))))
+```
+
+## Table to summarize computational results
+
+Load data from minimum generator sets study:
+```{r}
+dat_MGS <- read_csv(here::here("results/results_minimum_generator_sets.csv"))
+
+# rename path so it matches format of dat
+dat_MGS <- dat_MGS %>% mutate(path = str_replace(filename, 'prob-','alg1-prob-' ))
+
+# merge, adding the columns to dat_MGS
+dat_MGS <- right_join(dat, dat_MGS)
+
+decimals <- 1 / (10^1) # for percent
+dat_compare_instances <- dat_MGS %>% 
+   group_by(max_size,m,spAveCard,p) %>% 
+   summarise(count = n(),MGS_size = mean(MGS_size), rel_size = mean(MGS_size/max_size), Yn_size = mean(Yn_size), sol_time = mean(running_time)) %>% group_by(max_size) %>%
+   ungroup()
+
+# show table
+DT::datatable(dat_compare_instances %>% select(-max_size) %>% mutate(rel_size = percent(rel_size,accuracy = decimals), MGS_size = round(MGS_size,1), Yn_size = round(Yn_size, digits = 1), sol_time = round(sol_time, 2)))
+
+```
+
+Load data from reduced generator sets:
+
+```{r}
+dat_RGS <- read_csv(here::here("results/results_reduced_generator_sets_format.csv"))
+
+# Note:
+# - $RGS_size is the size of the reduced generator set (subset)
+# - $RGS_sizes is the size of the minimum generator set (subset)
+# - $RGS_size is the size of the minimum generator set (summed over subsets)
+
+```
+
+
+```{r}
+dat_RGS %>% 
+  filter(other_equal == TRUE) %>% 
+   filter(m!= 3) %>% 
+  filter(!(any_L_is_U & !other_all_L_is_U)) %>% 
+  filter(L_is_U == FALSE) %>% 
+  filter(Ys_sizes != MGS_sizes) %>% 
+  group_by(
+     m,
+     Ys_sizes,
+     subset_method,
+     #other_partial_levels_factor, 
+     partial_levels_factor
+     ) %>%
+  summarise(avg_q = mean(q_stats_check),avg_MGS_size = round(mean(MGS_sizes),1), avg_RGS_size = round(mean(RGS_size),1)) %>% 
+  mutate(avg_q = percent(avg_q,decimals)) %>%
+  ungroup() %>%
+  datatable()
+
 ```
