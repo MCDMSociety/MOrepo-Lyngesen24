@@ -1,4 +1,4 @@
-# Minkowski sum problems 
+# Minkowski sum problems (MOrepo-Lyngesen24)
 
 The Minkowski sum problem (MSP) over $S$ subsets/subproblems can be stated as 
 $$\min\{y \mid y \in Y = \oplus_{s \in \{1,\ldots,S\}} Y^s  \}$$
