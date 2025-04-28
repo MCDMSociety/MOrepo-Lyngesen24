@@ -706,9 +706,213 @@ dat_RGS <- read_csv(here::here("results/results_reduced_generator_sets_format.cs
 
 
 
-HER SKAL VI HAVE SUMMARY TABLES OPDELT PÅ LU|L, ... (SOM FIG 8 I ARTIKEL)
+<!-- HER SKAL VI HAVE SUMMARY TABLES OPDELT PÅ LU|L, ... (SOM FIG 8 I ARTIKEL) -->
 
-HEREFTER SUMMARY TAB FOR INSTANCS, S, SPCARD ETC.
+<!-- ### Strengthening the bounding set from above -->
+
+
+```{r}
+dat3 <- dat_RGS %>% filter(m != 3, other_equal) %>%
+    select(
+       filename,
+       filename_levels,
+       subproblem = subproblem_id,
+       method = subset_global_method,
+       lambda = partial_levels,
+       gamma = other_partial_levels,
+       q = q_stats_check,
+       S = m,
+       card_yns = Ys_sizes,
+       card_gs = MGS_sizes,
+       any_L_is_U, 
+       other_all_L_is_U,
+       L_is_U,
+       other_partial_levels_factor
+       # everything()
+    ) |> 
+    mutate(     
+       q = q * 100,
+       method = case_when(
+          method == "m|m" ~ "$\\mM|\\mM$",
+          method == "u|u" ~ "$\\mU|\\mU$",
+          method == "ul|l" ~ "$\\mLU|\\mL$",
+          method == "ul|u" ~ "$\\mLU|\\mU$",
+          .default = "error"
+       ),
+       lb = case_when(
+          any_L_is_U ~ "\\Yn^s",
+          .default = "\\hull{\\Ynse^s}"
+       )
+    ) |> arrange(filename, filename_levels)
+```
+
+
+
+
+A summary table <!-- for Figure 8--> showing average relative number of redundant vectors ($q^m$), for different percentages of non-extreme nondominated vectors known (`lambda`), and different percentages of non-extreme nondominated vectors known of other subproblems (`gamma`).
+      
+```{r}
+
+## upper bounds
+# label functions
+add_text_s <- function(string) paste0("$S=", string, "$")
+add_text_g <- function(string) paste0("$\\gamma=", string, "$")
+
+
+dat3 %>%
+   mutate(card_yns = card_yns,
+          card_gs = card_gs) %>%
+   filter(card_yns != card_gs) %>%
+   filter(!any_L_is_U) %>% 
+   group_by(filename, lambda, gamma, S, method) |> 
+   summarise(q = mean(q), n = n()) |> 
+   arrange(gamma, S, lambda, method) |>
+   group_by(S,lambda,method, gamma) |>
+   summarise(avg_q = mean(q)) |>
+   ungroup() |>
+   pivot_wider(names_from =method, values_from=avg_q, values_fn = mean)  %>%
+   mutate(
+      #`$\\mLU|\\mL$` = round(`$\\mLU|\\mL$`,1),
+      #`$\\mLU|\\mU$` = round(`$\\mLU|\\mU$`,1),
+      #`$\\mLU|\\mU$` = round(`$\\mLU|\\mU$`,1),
+      `$\\mLU|\\mL$` = round(`$\\mLU|\\mL$`,2),
+      `$\\mLU|\\mU$` = round(`$\\mLU|\\mU$`,2),
+      `$\\mM|\\mM$`   = round(`$\\mM|\\mM$`,2),
+      `$\\mU|\\mU$`  = round(`$\\mU|\\mU$` ,2)
+      ) %>%
+   rename(
+      #`$\\lambda$` = lambda,
+      #`$\\gamma$` = gamma,
+      #`$S$` = S,
+      "LU|L" = `$\\mLU|\\mL$`,
+      "LU|U" = `$\\mLU|\\mU$`,
+      "M|M" = `$\\mM|\\mM$`,
+      "U|U" = `$\\mU|\\mU$`
+          ) %>%
+   datatable()
+# Render DataTable with LaTeX headers
+   #datatable(escape = FALSE, options = list(
+    # columnDefs = list(
+    #   list(targets = 3, title = htmltools::HTML("$$\\lambda$$")),
+    #   list(targets = 4, title = htmltools::HTML("$$\\gamma$$")),
+    #   list(targets = 5, title = htmltools::HTML("$\\mLU|\\mL$$"))
+    # )
+   #))
+
+```
+
+A summary table for showing average relative number of redundant vectors ($q^m$), for each size $S \in \{2,4\}$ for different percentage of non-extreme nondominated vectors known (`lambda`).
+
+
+```{r}
+dat3 %>%
+   mutate(card_yns = card_yns,
+          card_gs = card_gs) %>%
+   filter(card_yns != card_gs) %>%
+   filter(!any_L_is_U) %>% 
+   group_by(filename, lambda, gamma, S, method) |> 
+   summarise(q = mean(q), n = n()) |> 
+   arrange(gamma, S, lambda, method) |>
+   group_by(S,lambda,method) |>
+   summarise(avg_q = mean(q)) |>
+   ungroup() |>
+   pivot_wider(names_from =method, values_from=avg_q, values_fn = mean)  %>%
+   mutate(
+      `$\\mLU|\\mL$` = round(`$\\mLU|\\mL$`,2),
+      `$\\mLU|\\mU$` = round(`$\\mLU|\\mU$`,2),
+      `$\\mM|\\mM$`   = round(`$\\mM|\\mM$`,2),
+      `$\\mU|\\mU$`  = round(`$\\mU|\\mU$` ,2)
+      ) %>%
+   rename(
+      "LU|L" = `$\\mLU|\\mL$`,
+      "LU|U" = `$\\mLU|\\mU$`,
+      "M|M" = `$\\mM|\\mM$`,
+      "U|U" = `$\\mU|\\mU$`
+          ) %>%
+   datatable()
+```
+
+
+<!-- A summary table of figure 9 -->
+
+<!-- ### Strengthening the bounding set from below -->
+
+A summary table <!--of Figure 9--> showing average relative number of redundant vectors ($q^m$), for each size $S \in \{2,4\}$ for different percentage of non-extreme nondominated vectors known (`lambda`), and for different lower bound sets ${L}^s = \text{conv}({Y}^s_\mathtt{SE})$ (`CONV`) and ${L}^s = {Y}^s_\mathtt{N}$ (`ALL`).
+
+```{r, eval=FALSE} 
+# Figure 9
+## lower bounds
+add_text_lb <- function(string) paste0("$\\L^s=", string, "$")
+
+dat3 %>% filter(card_yns != card_gs) %>%
+   filter(!(any_L_is_U & !other_all_L_is_U)) %>%
+   filter(L_is_U == FALSE) %>%
+   filter(card_yns != card_gs) %>% 
+   filter(other_partial_levels_factor %in% c("100",'all')) %>% 
+   group_by(filename, lambda, S, method, lb) |>
+   summarise(q = mean(q), n = n()) |>
+   arrange(S, lambda, method) |>
+   ggplot(aes(x = lambda, y = q, color = method)) +
+   geom_point(size = 0.7, alpha = 0.5) +
+   stat_summary(fun = mean, geom = "line", alpha = 0.7) +
+   facet_grid(S ~ lb, labeller = labeller(S = add_text_s, lb = add_text_lb)) +
+   labs(
+      y = "Average relative number of redundant vectors ($q^m$)",
+      x = "Percentage of non-extreme nondominated vectors known ($\\lambda$)", 
+      color = NULL
+   ) +
+   scale_linetype_manual(values = c("solid", "dashed", "dotted", "dotdash")) +
+   scale_y_continuous(labels = scales::number_format(big.mark = ",", prefix = "\\ "), breaks = seq(0, 100, by = 25)) +
+   # guides(color = guide_legend(override.aes = list(linetype = 0, keywidth = 16))) +
+   theme_bw() +
+   theme(
+      axis.title.y = element_text(vjust = 3),
+      axis.title.x = element_text(vjust = -3),
+      legend.position = "bottom", legend.key.width = unit(1, "cm"))  # legend.key.width = unit(2, "cm")
+```
+
+
+```{r}
+
+## lower bounds
+add_text_lb <- function(string) paste0("$\\L^s=", string, "$")
+
+dat3 %>% filter(card_yns != card_gs) %>%
+   filter(!(any_L_is_U & !other_all_L_is_U)) %>%
+   filter(L_is_U == FALSE) %>%
+   filter(card_yns != card_gs) %>% 
+   filter(other_partial_levels_factor %in% c("100",'all')) %>% 
+   group_by(filename, lambda, S, method, lb) |>
+   summarise(q = mean(q), n = n()) |>
+   arrange(S, lambda, method) |>
+   group_by(S,method, lambda,lb) %>% 
+      summarise(avg_q = mean(q)) |>
+   ungroup() |>
+   pivot_wider(names_from =method, values_from=avg_q, values_fn = mean)  %>%
+   mutate(
+      `$\\mLU|\\mL$` = round(`$\\mLU|\\mL$`,2),
+      `$\\mLU|\\mU$` = round(`$\\mLU|\\mU$`,2),
+      `$\\mM|\\mM$`   = round(`$\\mM|\\mM$`,2),
+      `$\\mU|\\mU$`  = round(`$\\mU|\\mU$` ,2)
+      ) %>%
+   rename(
+      "LU|L" = `$\\mLU|\\mL$`,
+      "LU|U" = `$\\mLU|\\mU$`,
+      "M|M" = `$\\mM|\\mM$`,
+      "U|U" = `$\\mU|\\mU$`
+          ) %>%
+    mutate( lb = case_when(
+       lb == "\\Yn^s" ~ "ALL",
+       .default = "CONV"
+    ),) %>% 
+   datatable()
+
+```
+
+
+<!-- HEREFTER SUMMARY TAB FOR INSTANCS, S, SPCARD ETC. -->
+
+A summary table showing the average relative number of redundant vectors ($q^m$) `avg_q`, average minimum generator set sizes `avg_MGS_size` and average reduced generator set sizes ´avg_RGS_size´ for each $S \in \{2,4\}$, for different subproblem sizes `sp_card` $|{Y}^s_\mathtt{N}| \in \{50,100,200,300\}$. The cases with no redundant ND vectors are filtered out. 
 
 ```{r}
 dat_RGS %>% 
@@ -721,10 +925,12 @@ dat_RGS %>%
      S = m,
      sp_card = Ys_sizes,
      subset_method = toupper(subset_method),
-     #other_partial_levels_factor, 
-     partial_levels_factor
+     # other_partial_levels_factor,
+     # partial_levels_factor
      ) %>%
   summarise(avg_q = mean(q_stats_check),avg_MGS_size = round(mean(MGS_sizes),1), avg_RGS_size = round(mean(RGS_size),1)) %>% 
   mutate(avg_q = percent(avg_q,decimals)) %>%
+  rename(method = subset_method) %>% 
   DT::datatable() 
 ```
+
