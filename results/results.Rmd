@@ -708,6 +708,8 @@ dat_RGS <- read_csv(here::here("results/results_reduced_generator_sets_format.cs
 
 HER SKAL VI HAVE SUMMARY TABLES OPDELT PÅ LU|L, ... (SOM FIG 8 I ARTIKEL)
 
+HEREFTER SUMMARY TAB FOR INSTANCS, S, SPCARD ETC.
+
 ```{r}
 dat_RGS %>% 
   filter(other_equal == TRUE) %>% 
