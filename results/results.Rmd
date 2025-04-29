@@ -704,13 +704,6 @@ dat_RGS <- read_csv(here::here("results/results_reduced_generator_sets_format.cs
 
 ```
 
-
-
-<!-- HER SKAL VI HAVE SUMMARY TABLES OPDELT PÅ LU|L, ... (SOM FIG 8 I ARTIKEL) -->
-
-<!-- ### Strengthening the bounding set from above -->
-
-
 ```{r}
 dat3 <- dat_RGS %>% filter(m != 3, other_equal) %>%
     select(
